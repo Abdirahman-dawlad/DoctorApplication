@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Appointments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.15); }
+        .status-scheduled { background-color: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-confirmed { background-color: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-completed { background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-cancelled { background-color: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .btn-primary { background: #2563eb; border: none; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #10b981; border: none; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; border: none; }
+        .btn-danger:hover { background: #dc2626; }
+        footer { background: #1e293b !important; color: white; padding: 2rem 0; margin-top: 3rem; }
+        .nav-tabs .nav-link { color: #2563eb; font-weight: 500; }
+        .nav-tabs .nav-link.active { color: #2563eb; font-weight: 600; border-bottom: 3px solid #2563eb; }
+        .empty-state { text-align: center; padding: 3rem 1rem; }
+        .empty-state i { font-size: 4rem; color: #cbd5e1; margin-bottom: 1rem; }
+        .specialization-badge { background: #dbeafe; color: #2563eb; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+    </style>
+</head>
+<body>
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-heartbeat me-2"></i>Doctor Virtual
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/doctors">
+                        <i class="fas fa-user-md"></i> Doctors
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/patients/register">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/appointments/my-appointments?patientId=1">
+                        <i class="fas fa-calendar-check"></i> My Appointments
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main>
+    <div class="container mt-4">
+        <!-- Error/Success Messages -->
+        <div th:if="${error}" class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span th:text="${error}">Error</span>
+        </div>
+        <div th:if="${success}" class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i>
+            <span th:text="${success}">Success</span>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="fw-bold mb-4">
+                    <i class="fas fa-calendar-check text-primary me-2"></i>My Appointments
+                    <span class="badge bg-primary ms-2" th:text="${totalAppointments}">0</span>
+                </h2>
+                <p th:if="${patient}" class="text-muted">
+                    Welcome back, <strong th:text="${patient.name}">Patient</strong>!
+                </p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="appointmentTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab"
+                        data-bs-target="#upcoming" type="button" role="tab">
+                    <i class="fas fa-clock me-1"></i> Upcoming
+                    <span class="badge bg-primary ms-1" th:text="${#lists.size(upcomingAppointments)}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="past-tab" data-bs-toggle="tab"
+                        data-bs-target="#past" type="button" role="tab">
+                    <i class="fas fa-history me-1"></i> Past
+                    <span class="badge bg-secondary ms-1" th:text="${#lists.size(pastAppointments)}">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="cancelled-tab" data-bs-toggle="tab"
+                        data-bs-target="#cancelled" type="button" role="tab">
+                    <i class="fas fa-times-circle me-1"></i> Cancelled
+                    <span class="badge bg-danger ms-1" th:text="${#lists.size(cancelledAppointments)}">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Upcoming Appointments -->
+            <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+                <div th:if="${#lists.isEmpty(upcomingAppointments)}" class="empty-state">
+                    <i class="fas fa-calendar-plus"></i>
+                    <h4>No upcoming appointments</h4>
+                    <p class="text-muted">Book a consultation with our doctors</p>
+                    <a href="/doctors" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Find a Doctor
+                    </a>
+                </div>
+                <div th:each="appointment : ${upcomingAppointments}" class="card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h5 class="fw-bold mb-1" th:text="${appointment.doctor.name}">Dr. Name</h5>
+                                <span class="specialization-badge" th:text="${appointment.doctor.specialization}">Specialization</span>
+                                <div class="mt-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-dollar-sign me-1"></i>
+                                        $<span th:text="${appointment.doctor.consultationFee}">0</span>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div>
+                                    <i class="far fa-calendar-alt me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'MMM dd, yyyy')}">Date</span>
+                                </div>
+                                <div>
+                                    <i class="far fa-clock me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'hh:mm a')}">Time</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <span class="status-scheduled" th:if="${appointment.status == 'SCHEDULED'}" th:text="${appointment.status}">SCHEDULED</span>
+                                <span class="status-confirmed" th:if="${appointment.status == 'CONFIRMED'}" th:text="${appointment.status}">CONFIRMED</span>
+                                <span class="status-completed" th:if="${appointment.status == 'COMPLETED'}" th:text="${appointment.status}">COMPLETED</span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a th:href="@{/appointments/{id}(id=${appointment.id})}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye"></i> Details
+                                </a>
+                                <a th:if="${appointment.meetingLink}" th:href="${appointment.meetingLink}" target="_blank" class="btn btn-success btn-sm">
+                                    <i class="fas fa-video"></i> Join
+                                </a>
+                                <form th:action="@{/appointments/{id}/cancel(id=${appointment.id})}" method="post" style="display: inline-block;">
+                                    <button type="submit" class="btn btn-danger btn-sm"
+                                            th:if="${appointment.status != 'CANCELLED' and appointment.status != 'COMPLETED'}"
+                                            onclick="return confirm('Cancel this appointment?')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Past Appointments -->
+            <div class="tab-pane fade" id="past" role="tabpanel">
+                <div th:if="${#lists.isEmpty(pastAppointments)}" class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <h4>No past appointments</h4>
+                    <p class="text-muted">Your past appointments will appear here</p>
+                </div>
+                <div th:each="appointment : ${pastAppointments}" class="card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h5 class="fw-bold mb-1" th:text="${appointment.doctor.name}">Dr. Name</h5>
+                                <span class="specialization-badge" th:text="${appointment.doctor.specialization}">Specialization</span>
+                            </div>
+                            <div class="col-md-3">
+                                <div>
+                                    <i class="far fa-calendar-alt me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'MMM dd, yyyy')}">Date</span>
+                                </div>
+                                <div>
+                                    <i class="far fa-clock me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'hh:mm a')}">Time</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <span class="status-completed" th:if="${appointment.status == 'COMPLETED'}" th:text="${appointment.status}">COMPLETED</span>
+                                <span class="status-scheduled" th:if="${appointment.status == 'SCHEDULED'}" th:text="${appointment.status}">SCHEDULED</span>
+                                <span class="status-confirmed" th:if="${appointment.status == 'CONFIRMED'}" th:text="${appointment.status}">CONFIRMED</span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a th:href="@{/appointments/{id}(id=${appointment.id})}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye"></i> Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cancelled Appointments -->
+            <div class="tab-pane fade" id="cancelled" role="tabpanel">
+                <div th:if="${#lists.isEmpty(cancelledAppointments)}" class="empty-state">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <h4>No cancelled appointments</h4>
+                    <p class="text-muted">You have no cancelled appointments</p>
+                </div>
+                <div th:each="appointment : ${cancelledAppointments}" class="card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <h5 class="fw-bold mb-1" th:text="${appointment.doctor.name}">Dr. Name</h5>
+                                <span class="specialization-badge" th:text="${appointment.doctor.specialization}">Specialization</span>
+                            </div>
+                            <div class="col-md-3">
+                                <div>
+                                    <i class="far fa-calendar-alt me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'MMM dd, yyyy')}">Date</span>
+                                </div>
+                                <div>
+                                    <i class="far fa-clock me-2 text-primary"></i>
+                                    <span th:text="${#temporals.format(appointment.appointmentDateTime, 'hh:mm a')}">Time</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <span class="status-cancelled">CANCELLED</span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a th:href="@{/appointments/{id}(id=${appointment.id})}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye"></i> Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4 mb-4 mb-md-0">
+                <h5><i class="fas fa-heartbeat me-2"></i>Doctor Virtual</h5>
+                <p class="text-muted">Your trusted platform for virtual healthcare consultations.</p>
+            </div>
+            <div class="col-md-2 mb-4 mb-md-0">
+                <h5>Quick Links</h5>
+                <ul class="list-unstyled">
+                    <li><a href="/doctors" class="text-muted text-decoration-none">Find Doctors</a></li>
+                    <li><a href="/patients/register" class="text-muted text-decoration-none">Register</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3">
+                <h5>Contact</h5>
+                <p class="text-muted">
+                    <i class="fas fa-envelope me-2"></i>support@doctorapp.com<br>
+                    <i class="fas fa-phone me-2"></i>+1 (555) 123-4567
+                </p>
+            </div>
+        </div>
+        <hr class="bg-secondary">
+        <div class="text-center text-muted">
+            <small>&copy; 2024 Doctor Virtual App. All rights reserved.</small>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
